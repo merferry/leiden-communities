@@ -13,7 +13,8 @@
 
 \Statex
 
-\Function{leidenMove}{$G', C', K', \Sigma'$} \label{alg:leidenlm--move-begin}
+\Function{leidenMove}{$G', C', K', \Sigma', \tau$} \label{alg:leidenlm--move-begin}
+  \State Mark all vertices in $G'$ as unprocessed \label{alg:leidenlm--reset-affected}
   \ForAll{$l_i \in [0 .. \text{\small{MAX\_ITERATIONS}})$} \label{alg:leidenlm--iterations-begin}
     \State Total delta-modularity per iteration: $\Delta Q \gets 0$ \label{alg:leidenlm--init-deltaq}
     \ForAll{unprocessed $i \in V'$ \textbf{in parallel}} \label{alg:leidenlm--loop-vertices-begin}
@@ -38,8 +39,9 @@
 
 \Function{scanCommunities}{$H_t, G', C', i, self$}
   \ForAll{$(j, w) \in G'.edges(i)$}
-    \If{$self$ \textbf{or} $i \neq j$} $H_t \gets H_t[C'[j]] + w$
+    \If{\textbf{not} $self$ \textbf{and} $i = j$} \textbf{continue}
     \EndIf
+    \State $H_t[C'[j]] \gets H_t[C'[j]] + w$
   \EndFor
   \Return{$H_t$}
 \EndFunction

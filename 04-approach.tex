@@ -26,8 +26,6 @@ I try four different variations of this algorithm which differ in whether we use
 
 It appears BFS traversal with a shared flag vector is the fastest. This is not a heuristic algorithm, so all algorithms return the same result.
 
-\input{src/alg-disconnected}
-
 
 %% Additional notes on Leiden algorithm
 I fixed the bug that caused leiden algorithm to fail if finding communities on road networks and kmer graphs. The issue was forgetting to reset the affected vertices flags before running the refinement phase.
@@ -84,7 +82,9 @@ In case convergence has not been achieved, we renumber communities (line \ref{al
 
 \input{src/alg-leiden}
 \input{src/alg-leidenlm}
+\input{src/alg-leidenre}
 \input{src/alg-leidenag}
+\input{src/alg-disconnected}
 
 
 \subsubsection{Local-moving phase of GVE-Leiden}
