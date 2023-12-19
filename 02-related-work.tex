@@ -3,3 +3,34 @@ The \textit{Louvain} method is a greedy modularity-optimization based community 
 To parallelize the Louvain algorithm, a number of strategies have been attempted. These include using heuristics to break the sequential barrier \cite{com-lu15}, ordering vertices via graph coloring \cite{com-halappanavar17}, performing iterations asynchronously \cite{com-que15, com-shi21}, using adaptive parallel thread assignment \cite{com-fazlali17, com-naim17, com-sattar19, com-mohammadi20}, parallelizing the costly first iteration \cite{com-wickramaarachchi14}, using vector based hashtables \cite{com-halappanavar17}, and using sort-reduce instead of hashing \cite{com-cheong13}\ignore{, using simple partitions based of vertex ids \cite{com-cheong13, com-ghosh18}, and identifying and moving ghost/doubtful vertices \cite{com-zeng15, com-que15, com-bhowmik19, com-bhowmick22}}. Platforms used range from an AMD multicore system \cite{com-fazlali17}, and Intel’s Knight's Landing, Haswell \cite{com-gheibi20}, SkylakeX, and Cascade Lake \cite{part-hossain21}. Other approaches include the use of MapReduce in a BigData batch processing framework \cite{com-zeitz17}. It should however be noted though that community detection methods such as the Louvain that rely on modularity maximization are known to suffer from resolution limit problem. This prevents identification of communities of certain sizes \cite{com-ghosh19}.
 
 A few open source implementations and software packages have been developed for community detection. Vite \cite{ghosh2018scalable} is a distributed memory parallel implementation of the Louvain method that incorporates several heuristics to enhance performance while maintaining solution quality, while Grappolo \cite{com-halappanavar17} is a shared memory parallel implementation. NetworKit \cite{staudt2016networkit} is a software package designed for analyzing the structural aspects of graph data sets with billions of connections. It is implemented as a hybrid with C++ kernels and a Python frontend, and includes a parallel implementation of the Louvain algorithm.
+
+
+%% Related work on Leiden algorithm
+
+I see two thesis by Fabian, Karlsruhe Institute of Technology and Magnus, University of Bergen. Fabian uses global queues and for vertex pruning, and vertex and community locking for updating communities, which is likely to be less efficient. Magnus uses the same approach as Fabien. On europe graph their algorithm takes 60-70s with 64 threads (on a 128 core system).
+
+
+%% Some related work for community detection
+
+I dont know what a semiring is but this paper by cuGraphs authors suggest it is useful for community detection.
+"In addition to embedding techniques, our primitive enables many important clustering and community detection algorithms, including k-means, k-medioids, mean-shift clustering, Louvain, Leiden, OPTICS, DBSCAN / HDBSCAN, Single- and complete-linkage agglomerative clustering, and Laplacian eigenmaps."
+https://arxiv.org/abs/2104.06357
+
+
+In the Parallel Heuristics for Scalable Community Detection, the authors describe the issues with trying to parallelize: possibility of negative gain, community swapping, stuck in local optima. Heuristics like minimum labeling, vertex coloring, and vertex following. Implementation is in OpenMP C++ and they used STL map for communities each vertex is connected to (i was trying this with pre-counting instead which could be faster). They compare using modularity score mostly. Specificity, Sensitivity, Overlap quality, and Rand index are difficult to calculate for large graphs (based on true positive, false positive, FN, TN). Modularity gain thresholds $10^-2$, $10^-4$. Comparision is also with label propagation based parallelization (PLM). There is also another community detection method called Clauset Newman Moore (CNM) which is agglomerative (cluster hierarchies tend to be more meaningful).
+https://arxiv.org/pdf/1410.1237.pdf
+
+
+%% More related work for community detection
+
+I found one paper by Prof. L. Dhulipala "Scalable community detection via Parallel Correlation Clustering". They write about (static) Louvain algorithm using LambdaCC objective (instead of modularity). They explore three optimizations for the Louvain algorithm:
+- They find asynchronous (ordered) Louvain performs well (quality and speed due to symmetry breaking).
+(I observe the same in experiments too)
+- They filter which vertices to consider moving in the next iteration (instead of all).
+(This is similar to Dynamic Frontier but applied to static algorithm)
+- They do an additional refinement after clustering (this minimizes bad clusters).
+(This is similar to refinement phase in Leiden algorithm)
+
+
+They use graphs varying from 1M to 1.8B edges, and do weak and strong scaling experiments.
+

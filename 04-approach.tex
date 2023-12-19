@@ -1,67 +1,77 @@
-\subsection{Optimizations for Louvain algorithm}
+\subsection{Optimizations for Leiden algorithm}
 \label{sec:leiden}
 
-We use a parallel implementation of the Louvain method to determine suitable parameter settings and optimize the original algorithm through experimentation with a variety of techniques. We use \textit{asynchronous} version of Louvain, where threads work independently on different parts of the graph. This allows for faster convergence but can also lead to more variability in the final result \cite{com-blondel08, com-halappanavar17}. Further, we allocate a separate hashtable per thread to keep track of the delta-modularity of moving to each community linked to a vertex in the local-moving phase of the algorithm, and to keep track of the total edge weight from one super-vertex to the other super-vertices in the aggregation phase of the algorithm.
+We extend our optimizations for the Louvain algorithm \cite{sahu2023gvelouvain}, to the Leiden algorithm. In detail, we employ an \textit{asynchronous} implementation of the \textit{Leiden} algorithm, where threads operate independently on distinct sections of the graph. This facilitates quicker convergence but introduces variability into the final result \cite{com-blondel08}. To perform computations efficiently, we pre-allocate a dedicated hashtable per thread. These hashtables serve two primary purposes: they keep track of the delta-modularity associated with moving to each community connected to a vertex during the local-moving/refinement phases, and they record the total edge weight between super-vertices in the aggregation phase of the algorithm.
 
-Our optimizations include using OpenMP's \verb|dynamic| loop schedule, limiting the number of iterations per pass to $20$, using a tolerance drop rate of $10$, setting an initial tolerance of $0.01$, using an aggregation tolerance of $0.8$, employing vertex pruning, making use of parallel prefix sum and preallocated Compressed Sparse Row (CSR) data structures for finding community vertices and for storing the super-vertex graph during the aggregation phase, and using fast collision-free per-thread hashtables which are well separated in their memory addresses (\textit{Far-KV}) for the local-moving and aggregation phases of the algorithm. Details on each of the optimizations is given below.
+Our optimizations encompass several strategies, including utilizing OpenMP's \textit{dynamic} loop scheduling, capping the number of iterations per pass at $20$, employing a tolerance drop rate of $10$ (threshold scaling), initiating with a tolerance of $0.01$, using an aggregation tolerance of $0.8$ to avoid performing aggregations of minimal utility, implementing flag-based vertex pruning (instead of a queue-based one \cite{nguyenleiden}), utilizing parallel prefix sum, and using preallocated Compressed Sparse Row (CSR) data structures for identifying community vertices and storing the super-vertex graph during aggregation. Additionally, we employ fast collision-free per-thread hashtables, well separated in their memory addresses.
 
-For each optimization, we test a number of relevant alternatives, and show the relative time and the relative modularity of communities obtained by each alternative in Figure \ref{fig:leiden-opt}. This result is obtained by running the tests on each graph in the dataset (see Table \ref{tab:dataset}), $5$ times on each graph to reduce the impact of noise, taking their geometric mean and arithmetic mean for the runtime and modularity respectively, and representing them as a ratio within each optimization category.
+We attempt two variants of the \textit{Leiden} algorithm. One uses a \textit{greedy refinement phase} where vertices greedily optimize for delta-modularity (within their community bounds), while the other uses a \textit{random-greedy refinement phase} (using a fast \textit{xorshift32} random number generator), where the likelihood of selection of a community to move to (by a vertex) is proportional to its delta-modularity. Our experiments show the \textit{greedy variant} performs the best on average, both in terms of runtime and modularity. We also try medium and heavy variants which disable threshold scaling and aggregation tolerance, however do not find them to perform well overall. On \textit{europe\_osm} graph, our parallel Greedy-Leiden (which we from here on refer to simply as Leiden) runs $3\times$ faster than Nguyen \cite{nguyenleiden}.
 
-
-\subsubsection{Adjusting OpenMP loop schedule}
-
-We attempt \textit{static}, \textit{dynamic}, \textit{guided}, and \textit{auto} loop scheduling approaches of OpenMP (each with a chunk size of $2048$) to parallelize the local-moving and aggregation phases of the Louvain algorithm. Results indicate that the scheduling behavior can have small impact on the quality of obtained communities. We consider OpenMP's \verb|dynamic| loop schedule to be the best choice, as it helps achieve better load balancing when the degree distribution of vertices is non-uniform, and offers a $7\%$ reduction in runtime with respect to OpenMP's \textit{auto} loop schedule, with only a $0.4\%$ reduction in the modularity of communities obtained (which is likely to be just noise).
-
-\subsubsection{Limiting the number of iterations per pass}
-
-Restricting the number of iterations of the local-moving phase ensures its termination within a reasonable number of iterations, which helps minimize runtime. This can be important since the local-moving phase performed in the first pass is the most expensive step of the algorithm. However, choosing too small a limit may worsen convergence rate. Our results indicate that limiting the maximum number of iterations to $20$ allows for $13\%$ faster convergence, when compared to a maximum iterations of $100$.
-
-
-\subsubsection{Adjusting tolerance drop rate (threshold scaling)}
-
-Tolerance is used to detect convergence in the local-moving phase of the Louvain algorithm, i.e., when the total delta-modularity in a given iteration is below or equal to the specified tolerance, the local-moving phase is considered to have converged. Instead of using a fixed tolerance across all passes of the Louvain algorithm, we can start with an initial high tolerance and then gradually reduce it. This is known as threshold scaling \cite{com-lu15, com-naim17, com-halappanavar17}, and it helps minimize runtime as the first pass of the algorithm (which is usually the most expensive). Based on our findings, a tolerance drop rate of $10$ yields $4\%$ faster convergence, with respect to a tolerance drop rate of $1$ (threshold scaling disabled), with no reduction in quality of communities obtained.
-
-
-\subsubsection{Adjusting initial tolerance}
-
-Starting with a smaller initial tolerance allows the algorithm to explore broader possibilities for community assignments in the early stage, but comes at the cost of increased runtime. We find an initial tolerance of $0.01$ provides a $14\%$ reduction in runtime of the algorithm with no reduction in the quality of identified communities, when compared to an initial tolerance of $10^{-6}$.
-
-
-\subsubsection{Adjusting aggregation tolerance}
-
-The aggregation tolerance determines the point at which communities are considered to have converged based on the number of community merges. In other words, if too few communities merged this pass we should stop here, i.e., if $|V_{aggregated}|/|V| \geq$ aggregation tolerance, we consider the algorithm to have converged. Adjusting aggregation tolerance allows the algorithm to stop earlier when further merges have minimal impact on the final result. According to our observations, an aggregation tolerance of $0.8$ appears to be the best choice, as it presents a $14\%$ reduction in runtime, when compared to the aggregation tolerance being disabled ($1$), while identifying final communities of equivalent quality.
-
-
-\subsubsection{Vertex pruning}
-
-Vertex pruning is a technique that is used to minimize unnecessary computation. Here, when a vertex changes its community, its marks its neighbors to be processed. Once a vertex has been processed, it is marked as not to be processed. However, it comes with an added overhead of marking an unmarking of vertices. Based on our results, vertex pruning justifies this overhead, and should be enabled for $11\%$ improvement in performance. An illustration of vertex pruning optimization is shown in Figure \ref{fig:leiden-pruning}.
-
-\input{src/fig-leiden-pruning}
-
-
-\subsubsection{Finding community vertices for aggregation phase}
-
-In the aggregation phase of the Louvain algorithm, the communities obtained in the previous local-moving phase of the algorithm are combined into super-vertices in the aggregated graph, with the edges between two super-vertices being equal to the total weight of edges between the respective communities. This requires one to obtain the list of vertices belonging to each community, instead of the mapping of community membership of each vertex that we have after the local-moving phase ends. A straight-forward implementation of this would make use of two-dimensional arrays for storing vertices belonging to each community, with the index in the first dimension representing the community id $c$, and the index in the second dimension pointing to the $n^{th}$ vertex in the given community $c$. However, this requires memory allocation during the algorithm, which is expensive. Employing a parallel prefix sum technique along with a preallocated Compressed Sparse Row (CSR) data structure eliminates repeated memory allocation and deallocation, enhancing performance. Indeed, out findings indicate that using parallel prefix sum along with a preallocated CSR is $2.2\times$ faster than using 2D arrays for aggregating vertices.
-
-
-\subsubsection{Storing aggregated communities (super-vertex graph)}
-
-After the list of vertices belonging to each community have been obtained, the communities need to be aggregated (or compressed) into super-vertices, such that edges between two super-vertices being equal to the total weight of edges between the respective communities. This is generally called the super-vertex graph, or the compressed graph. It is then used as an input to the local-moving phase of the next pass of the Louvain algorithm. A simple data structure to store the super-vertex graph in the adjacency list format would be a two-dimensional array. Again, this requires memory allocation during the algorithm, which is bad for performance. Utilizing two preallocated CSRs, one for the source graph and the other for the target graph (except the first pass, where the dynamic graph may be stored in any desired format suitable for dynamic batch updates), along with parallel prefix sum can help here. We observe that using parallel prefix sum along with preallocated CSRs for maintaining the super-vertex graph is again $2.2\times$ faster than using 2D arrays.
-
-
-\subsubsection{Hashtable design for local-moving/aggregation phases}
-
-One can use C++'s inbuilt maps as per-thread (independent) hashtables for the Louvain algorithm. But this has poor performance. So we use a key-list and a full-size values array (collision-free) to dramatically improve performance. However, if the memory addresses of the hashtables are nearby (\textit{Close-KV}), even if each thread uses its own hashtable exclusively, performance is not as high. This is possibly due to false cache-sharing. Alternatively, if we ensure that the memory address of each hashtable are farther away (\textit{Far-KV}), the performance improves. Our results indicate that \textit{Far-KV} has the best performance and is $4.4\times$ faster than \textit{Map}, and $1.3\times$ faster than \textit{Close-KV} hashtable implementations. An illustration of \textit{Far-KV} hashtable is shown in Figure \ref{fig:leiden-hashtable}.
-
-\input{src/fig-leiden-hashtable}
 \input{src/fig-leiden-opt}
 
+%% Also include algorithm for counting disconnected communities
+Counting of disconnected communities is taking much longer (>30min). Current algorithm obtains the vertices belonging to each community (ID) and checks if all vertices within the community are reachable (using BFS or DFS from one vertex in each community), while avoiding to go to any other adjacent community.
+
+Now i am trying to optimize the method for examining disconnected communities.
+The base algorithm is as follows:
+- Find the size of each community
+- Pick one vertex from each community
+- Traverse from that vertex within the community
+- If all vertices within the community could not be reached, we know its disconnected
+
+I try four different variations of this algorithm which differ in whether we use:
+- Parallel DFS or BFS
+- Per-thread or shared "visited" flags (shared flags is called light DFS/BFS)
+(If it is shared, each thread should scan all vertices but only process that community which belongs to it -> this is determined by community-id)
+
+It appears BFS traversal with a shared flag vector is the fastest. This is not a heuristic algorithm, so all algorithms return the same result.
+
+\input{src/alg-disconnected}
+
+
+%% Additional notes on Leiden algorithm
+I fixed the bug that caused leiden algorithm to fail if finding communities on road networks and kmer graphs. The issue was forgetting to reset the affected vertices flags before running the refinement phase.
 
 
 
-\subsection{Our optimized Louvain implementation}
+
+\subsection{Our optimized Leiden implementation}
 
 We now explain the implementation of GVE-Leiden in Algorithms \ref{alg:leiden}, \ref{alg:leidenlm}, and \ref{alg:leidenag}. A flow diagram illustrating the first pass of GVE-Leiden is shown in Figure \ref{fig:leiden-pass}.
+
+
+%% Our implementation of Leiden algorithm
+On europe\_osm our algorithm runs in 23s (~3x speedup wrt Fabien). I also try medium and heavy variants which disable threshold scaling and aggregation tolerance. Results show that louvain is on average 1.4x faster than leiden (optimized greedy variation). In terms of modularity, leiden (greedy variant) obtains slightly higher modularity than louvain. Leiden however improves upon louvain by obtaining 20x fewer disconnected communities (at 1.4x runtime cost).
+
+
+%% Yet again on Leiden algorithm
+I tried two variations of Leiden algorithm (like before):
+- Greedy Leiden: Where the refinement phase is greedy, just like local-moving phase
+- Random Leiden: Where refinement phase is proportionally random to delta-modularity, as proposed by Traag et al.
+(For random leiden, i use xorshift32 random number generator, C++ default RNG too slow)
+
+Further i try 3 different variations of Greedy/Random Leiden:
+- Normal: Uses same paramter config as our optimized Louvain (tolerance=$10^-2$, 20 max iterations, 5 max passes)
+- Medium: Uses lower start tolerance of $10^-6$, 100 max iterations, 100 max passes
+- Heavy: Uses even lower start tolerance of $10^-10$, 100 max iterations, 100 max passes
+(The idea is to see if my normal Leiden configs are good or not)
+
+Please ignore road networks and k-mer protien graphs, as Leiden does not work there, will try to explain why so later.
+
+Here are the observations:
+- Greedy Leiden is faster than Random Leiden
+- Medium/Heady variations generally dont do well, so my normal configs are good
+- Louvain is genrally faster than Leiden
+
+Louvain generally obtain communities of higher modularity than Leiden.
+However, a large fraction of communities obtained by Louvain are disconnected.
+
+Q> Why does Leiden have some disconnected communities still?
+Q> Why does Leiden not work with road networks?
+I think the answer for both questions has to do with parallelism. There is a race between threads to pick a suitable community. If the size of each community is large, this generally does not badly affect modularity. But with small community bounds (in refinement phase of Leiden) the race can lead to bad community memberships. I will try to come up a few solutions to this. This is not an issue with sequential, so Traag et al. dont observe this issue in their original paper.
+https://www.nature.com/articles/s41598-019-41695-z
+
+
 
 
 \subsubsection{Main step of GVE-Leiden}

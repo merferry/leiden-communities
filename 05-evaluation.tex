@@ -3,6 +3,10 @@
 
 We use a server that has two $16$-core x86-based Intel Xeon Gold 6226R processors running at $2.90$ GHz. Each core has an L1 cache of $1$ MB, an L2 cache of $16$ MB, and a shared L3 cache of $22$ MB. The machine has $93.4$ GB of system memory and runs on CentOS Stream 8. We use GCC 8.5 and OpenMP 4.5. Table \ref{tab:dataset} shows the graphs we use in our experiments. All of them are obtained from the SuiteSparse Matrix Collection \cite{suite19}.
 
+
+%% Additional setup details for Leiden algorithm (also applies to Louvain)
+We use 32-bit integers for vertex ids and 32-bit float for edge weights but use 64-bit floats for computations and hashtable values. We utilize $64$ threads to match the number of cores available on the system. In the graphs, number of vertices vary from $3.07$ to $214$ million, and number of edges vary from $25.4$ million to $3.80$ billion. We ensure edges to be undirected and weighted with a default of $1$.
+
 \input{src/tab-dataset}
 \input{src/fig-leiden-compare}
 
@@ -24,12 +28,20 @@ Figure \ref{fig:leiden-compare--runtime} shows the runtimes of Vite (Louvain), G
 
 \subsection{Analyzing Performance of GVE-Leiden}
 
+%% Disconnected communities with Leiden algorithm
+From the initial results it looks like Leiden algorithm is much less likely than Louvain to return disconnected communities. However, the modularity obtained is generally (interestingly) generally lower than PageRank. Also the randomized version of refinement phase of Leiden (using xorshift32 random engine) somehow seems to obtain lower modularity than greedy version of refinement phase.
+
 The phase-wise and pass-wise split of GVE-Leiden is shown in Figures \ref{fig:leiden-splits--phase} and \ref{fig:leiden-splits--pass} respectively. Figure \ref{fig:leiden-splits--phase} indicates that GVE-Leiden spends most of the runtime in the local-moving phase on \textit{web graphs}, \textit{road networks}, and \textit{protein k-mer graphs}, while it devotes majority of the runtime in the aggregation phase on \textit{social networks}. The pass-wise split (Figure \ref{fig:leiden-splits--pass}) indicates that the first pass dominates runtime on high-degree graphs (\textit{web graphs} and \textit{social networks}), while subsequent passes prevail in execution time on low-degree graphs (\textit{road networks} and \textit{protein k-mer graphs}).
 
 On average, $49\%$ of GVE-Leiden's runtime is spent in the local-moving phase, $35\%$ is spent in the aggregation phase, and $16\%$ is spent in other steps (initialization, renumbering communities, looking up dendrogram, and resetting communities) of the algorithm. Further, $67\%$ of the runtime is spent in the first pass of the algorithm, which is the most expensive pass due to the size of the original graph (later passes work on super-vertex graphs) \cite{com-wickramaarachchi14}.
 
 We also observe that graphs with lower average degree (\textit{road networks} and \textit{protein k-mer graphs}) and graphs with poor community structure (such as \verb|com-LiveJournal| and \verb|com-Orkut|) have a larger $\text{runtime}/|E|$ factor, as shown in Figure \ref{fig:leiden-hardness}.
 
+
+%% Additional analysis for Leiden algorithm
+In this section, we observe the performance of our optimized parallel \textit{Leiden} (\textit{greedy variant}) with respect to \textit{Louvain} (which is optimized and parallelized in a manner similar to \textit{Leiden}). For each graphs in the dataset, we run each algorithm 5 times to minimize measurement noise, and report the average results in Figures \ref{fig:leiden-disconnected}, \ref{fig:leiden-modularity}, and \ref{fig:leiden-time}.
+
+Figure \ref{fig:leiden-disconnected} shows the percentage of disconnected communities obtained with both algorithms for each graph in the dataset. \textit{Leiden} obtains drastically reduced number of disconnected communities compared to \textit{Louvain} (except on road networks), achieving an average of $20\times$ reduction in disconnected communities. Meanwhile, Figure \ref{fig:leiden-modularity} shows the modularity of both algorithms on the same dataset. We observe that \textit{Leiden}, on average, obtains communities of slightly higher modularity than \textit{Louvain}. Lastly, Figure \ref{fig:leiden-time} shows the runtime of both algorithms across the dataset. \textit{Leiden} is on average $26\%$ slower than Louvain. Nonetheless, this increase in computation time is a minor trade-off for obtaining predominantly well-connected high-quality communities.
 
 
 

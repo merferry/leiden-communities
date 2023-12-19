@@ -1,0 +1,36 @@
+\begin{algorithm}[hbtp]
+\caption{Finding disconnected communities in parallel.}
+\label{alg:disconnected}
+\begin{algorithmic}[1]
+\Require{$G$: Input graph}
+\Require{$C$: Community membership of each vertex}
+\Ensure{$D$: Disconnected flag for each community}
+\Ensure{$S$: Size of each community}
+\Ensure{$f_{if}$: Perform BFS to vertex $j$ if condition satisfied}
+\Ensure{$f_{do}$: Perform operation after each vertex is visited}
+\Ensure{$reached$: Number of vertices reachable from $i$ to $i$'s community}
+\Ensure{$work_t$: Work-list of current thread}
+
+\Statex
+
+\Function{disconnectedCommunities}{$G, C$}
+  \State $D \gets \{\}$ \textbf{;} $vis \gets \{\}$
+  \State $S \gets communitySizes(G, C)$
+  \ForAll{\textbf{threads in parallel}}
+    \ForAll{$i \in V$}
+      \State $c \gets C[i]$ \textbf{;} $reached \gets 0$
+      \State $\rhd$ Skip if community $c$ is empty, or
+      \State $\rhd$ does not belong to work-list of current thread.
+      \If{$S[c] = 0$ \textbf{or} $c \notin work_t$} \textbf{continue}
+      \EndIf
+      \State $f_{if} \gets (j) \implies C[j] = c$
+      \State $f_{do} \gets (j) \implies reached \gets reached + 1$
+      \State $bfsVisitForEach(vis, G, i, f_{if}, f_{do})$
+      \If{$reached < S[c]$} $D[c] \gets 1$
+      \EndIf
+      \State $S[c] \gets 0$
+    \EndFor
+  \EndFor
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
