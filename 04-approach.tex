@@ -69,6 +69,9 @@ Q> Why does Leiden not work with road networks?
 I think the answer for both questions has to do with parallelism. There is a race between threads to pick a suitable community. If the size of each community is large, this generally does not badly affect modularity. But with small community bounds (in refinement phase of Leiden) the race can lead to bad community memberships. I will try to come up a few solutions to this. This is not an issue with sequential, so Traag et al. dont observe this issue in their original paper.
 https://www.nature.com/articles/s41598-019-41695-z
 
+%% Disconnected communities with Leiden algorithm
+From the initial results it looks like Leiden algorithm is much less likely than Louvain to return disconnected communities. However, the modularity obtained is generally (interestingly) generally lower than PageRank. Also the randomized version of refinement phase of Leiden (using xorshift32 random engine) somehow seems to obtain lower modularity than greedy version of refinement phase.
+
 
 
 
