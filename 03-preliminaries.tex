@@ -31,9 +31,9 @@ Modularity serves as a\ignore{fitness} metric for assessing the quality of commu
 
 
 \subsection{Louvain algorithm}
-\label{sec:about-leiden}
+\label{sec:about-louvain}
 
-The Louvain method \cite{com-blondel08} is a modularity optimization based agglomerative algorithm for identifying high quality disjoint communities in large networks. It has a time complexity of $O (L |E|)$ (with $L$ being the total number of iterations performed), and a space complexity of $O(|V| + |E|)$ \cite{com-lancichinetti09}. The algorithm consists of two phases: the \textit{local-moving phase}, where each vertex $i$ greedily decides to move to the community of one of its neighbors $j \in J_i$ that gives the greatest increase in modularity $\Delta Q_{i:C_i \rightarrow C_j}$ (using Equation \ref{eq:delta-modularity}), and the \textit{aggregation phase}, where all the vertices in a community are collapsed into a single super-vertex. These two phases make up one pass, which repeats until there is no further increase in modularity \cite{com-blondel08, com-leskovec21}. We observe that Louvain obtains high-quality communities, with $3.0 - 30\%$ higher modularity than that obtained by LPA, but requires $2.3 - 14\times$ longer to converge.
+The Louvain method \cite{com-blondel08} is a modularity optimization based agglomerative algorithm for identifying high quality disjoint communities in large networks. It has a time complexity of $O (L |E|)$ (with $L$ being the total number of iterations performed), and a space complexity of $O(|V| + |E|)$ \cite{com-lancichinetti09}. The algorithm consists of two phases: the \textit{local-moving phase}, where each vertex $i$ greedily decides to move to the community of one of its neighbors $j \in J_i$ that gives the greatest increase in modularity $\Delta Q_{i:C_i \rightarrow C_j}$ (using Equation \ref{eq:delta-modularity}), and the \textit{aggregation phase}, where all the vertices in a community are collapsed into a single super-vertex. These two phases make up one pass, which repeats until there is no further increase in modularity \cite{com-blondel08, com-leskovec21}.\ignore{We observe that Louvain obtains high-quality communities, with $3.0 - 30\%$ higher modularity than that obtained by LPA, but requires $2.3 - 14\times$ longer to converge.}
 
 
 
@@ -41,51 +41,4 @@ The Louvain method \cite{com-blondel08} is a modularity optimization based agglo
 \subsection{Leiden algorithm}
 \label{sec:about-leiden}
 
-%% Problems with Louvain: Internally disconnected communities
-Louvain algorithm may identify communities that are internally disconnected. A certain node that acts as bridge may move to another community. Remaining vertices stay well connected. This occurs frequently in practice. Iterating the algorithm aggravates the problem. Although its does not decrease quality function.
-
-
-%% Problems with Louvain: Arbitrarily badly connected communities
-
-Further, Louvain algorithm may identify communities that are arbitrarily badly connected. Nodes that are grouped together may be better off split into multiple communities, i.e., splitting the community can improve the quality. This is not the same as resolution limit problem with modularity, that causes small communities to be clustered with large communities. Louvain only guarantees that no communities can be merged (well separated). Badly connected => Leiden could split given communities.
-
-
-%% Leiden algorithm
-
-Unlike the Louvain algorithm, the Leiden algorithm has an additional refine phase after the local-moving phase, where nodes within each community are local-moved again after reset. Refine phase is randomized (not greedy), the community a node moves to is proportional to the delta-modularity of moving to that community. When nodes are greedily moved, some optimal partitions cannot be found. It uses local-move with pruning (however, we apply this optimizations to both algorithms).
-
-
-%% Leiden algorithm: Guarantees
-
-1. All communities are $\gamma$-separated.
-2. All communities are $\gamma$-connected.
-If partition didn’t change:
-3. All nodes are optimally assigned.
-4. All communities are subpartition $\gamma$-dense.
-5. All communities are uniformly $\gamma$-dense.
-6. All communities are subset optimal.
-
-
-%% Idea behind Leiden algorithm
-
-The idea behind the new leiden algorithm is that louvain can find arbitrarily badly connected communities and even disconnected communities. Louvain algorithm has two phases, a locl-moving phase, and an aggregation phase (for each pass). Leiden algorithm adds another refinement phase between the two, where it allows vertices to find sub-communities within the communities just obtained from local-moving phase.
-
-
-%% Came across Leiden algorithm
-
-I came across this paper on Leiden method which shows that some communities produced by Louvain method are badly connected, and some even disconnected (and why this is not good). Louvain method relies on modularity score, which has resolution issues (cant handle too small communities, solution CPM score). They add a refinement step and a better (random) local move approach. The restructuring phase is also with refinement. They also proved is supplementary section why its better.
-https://www.nature.com/articles/s41598-019-41695-z
-
-In both:
-Phase 1: Iterate until the score no longer improves (but Leiden can still proceed, maybe because its random)
-Phase 2: Form its smaller super-nodes graph
-Repeat until score no longer improves
-
-
-%% More about Leiden algorithm
-
-- Separating disconnected communities
-Louvain algorithm may place diconnected groups of vertices within the same community. We could try disconnecting them either at the end or at the end of each phase.
-- Dynamic Leiden algorithm
-This involves applying a refinement phase after the local-moving phase of the Louvain algorithm. It also should be able to handle community split without a call to Static Louvain/Leiden.
-In the end we can measure the quality of communities obtained through our disconnected Louvain and dynamic Leiden in terms of quality, stability, and performance.
+The Louvain method, while effective, may identify internally disconnected communities and arbitrarily badly connected ones. The Leiden algorithm, introduced by Traag et al. \cite{com-traag19}, addresses these limitations. The algorithm introduces a \textit{refinement phase} after the local-moving phase, where vertices within each community undergo additional local moves, within their communties obtained from the local-moving phase, in a randomized fashion proportional to the delta-modularity of the move. This non-greedy refinement addresses issues arising from Louvain's greedy approach, allowing vertices to find sub-communities within those obtained from the local-moving phase. The Leiden algorithm not only guarantees that all communities are well separated (like the Louvain method), but also are well connected. In cases where the partition doesn't change, Leiden algorithm ensures that all vertices are optimally assigned, and all communities are subset optimal \cite{com-traag19}.

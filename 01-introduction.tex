@@ -1,25 +1,64 @@
-Community detection\ignore{, also know as clustering,} is the problem of uncovering the underlying structure of complex networks, i.e., identifying groups of vertices that exhibit dense internal connections but sparse connections with the rest of the network, in an unsupervised manner. It is an NP-hard problem with numerous applications in domains such as drug discovery, protein annotation, topic discovery, anomaly detection, and criminal identification. Communities identified are intrinsic when based on network topology alone, and are disjoint when each vertex belongs to only one community \cite{com-gregory10}.\ignore{One of the difficulties in the community detection problem is the lack of apriori knowledge on the number and size distribution of communities \cite{com-blondel08}.} The \textit{Louvain} method \cite{com-blondel08} is a popular heuristic-based approach for community detection, with the modularity metric \cite{com-newman06} being used to measure the quality of communities identified.
+Community detection\ignore{, also know as clustering,} is the problem of identifying subsets of nodes that exhibit higher connectivity among themselves than with the rest of the network. The obtained communities shed light on the organization and functionality of the network. It is an NP-hard problem with applications in topic discovery, protein annotation, recommendation systems, and targeted advertising. Communities identified are intrinsic when based on network topology alone, and are disjoint when each vertex belongs to only one community \cite{com-gregory10}.\ignore{One of the difficulties in the community detection problem is the lack of apriori knowledge on the number and size distribution of communities \cite{com-blondel08}.} The \textit{Louvain} method \cite{com-blondel08} is a popular heuristic-based approach for community detection. It employs a two-phase approach, comprising a local-moving phase and an aggregation phase, to iteratively optimize the modularity metric --- a measure of community quality \cite{com-newman06}.
 
-In recent years, the collection of data and the relationships among them, represented as graphs, have reached unmatched levels. This has necessitated the design of efficient parallel algorithms for community detection on large networks. The multicore/shared memory setting is crucial for community detection due to its energy efficiency and the prevalence of hardware with extensive DRAM sizes.\ignore{Optimizing parallel community detection algorithms for modern hardware architectures can yield notable performance benefits and competitive advantages across applications.} However, many of the current algorithms for community detection are challenging to parallelize due to their irregular and inherently sequential nature \cite{com-halappanavar17}, in addition to the complexities of handling concurrency, optimizing data access, reducing contention, minimizing load imbalance. Existing studies on Louvain propose algorithmic optimizations and parallelization techniques, but do not address optimization for the aggregation phase of the Louvain algorithm, which emerges as a bottleneck after the local-moving phase of the algorithm has been optimized. Moreover, these optimization techniques are scattered over a number of papers, making it difficult for a reader to get a grip over them.
+Despite its popularity, the Louvain method has been observed to produce internally-disconnected and badly connected communities \cite{com-traag19}. In response to this, Leiden algorithm has been proposed as an improvement over the Louvain method. It introduces an additional refinement phase between the local-moving and aggregation phases. The refinement phase allows nodes to explore and potentially form sub-communities within the communities identified during the local-moving phase. This enables the Leiden algorithm to identify well-connected communities \cite{com-traag19}.
 
+However, applying the original Leiden algorithm to massive graphs has raised computational bottlenecks, mainly due to its inherently sequential nature (similar to the Louvain method \cite{com-halappanavar17}). In contexts where scalability is paramount, the development of an optimized parallel Leiden algorithm becomes imperative --- especially in the multicore/shared memory setting, due to its energy efficiency and the prevalence of hardware with large memory sizes. This technical report addresses precisely this challenge by presenting a parallel implementation of the Leiden algorithm, targeting both quality and efficiency.
+
+Existing studies on parallel Leiden algorithm propose a number of parallelization techniques, but do not address optimization for the aggregation phase of the Leiden algorithm \cite{verweijfaster}, which emerges as a bottleneck after the local-moving phase of the algorithm has been optimized. In addition, a number of optimization techniques that apply to the Louvain method also apply to the Leiden algorithm.\ignore{However, these are scattered over a number of papers, making it difficult for a reader to get a grip over them.}
 
 %% Introduction for Leiden algorithm
-Community detection in graphs is a well-studied problem, which involves finding subsets of nodes that exhibit higher connectivity among themselves than with the rest of the network. The obtained communities shed light on the organization and functionality of the network. Community detection has applications in topic discovery, protein annotation, recommendation systems, and targeted advertising \cite{com-gregory10}.
+%% Problems with Louvain: Internally disconnected communities
+% Louvain algorithm may identify communities that are internally disconnected. A certain node that acts as bridge may move to another community. Remaining vertices stay well connected. This occurs frequently in practice. Iterating the algorithm aggravates the problem. Although its does not decrease quality function.
 
-The \textit{Louvain} algorithm \cite{com-blondel08} has been pivotal in community detection. It employs a two-phase approach, comprising a local-moving phase and an aggregation phase, to iteratively optimize the modularity metric --- a measure of community quality. Despite its popularity, \textit{Louvain} has been observed to produce badly connected communities --- even internally-disconnected communities \cite{com-traag19}.
 
-In response to this, \textit{Leiden} algorithm has been proposed as an improvement over \textit{Louvain}. It introduces an additional refinement phase between the local-moving and aggregation phases. The refinement phase allows nodes to explore and potentially form sub-communities within the communities identified during the local-moving phase. This enables \textit{Leiden} to identify well-connected communities \cite{com-traag19}.
+%% Problems with Louvain: Arbitrarily badly connected communities
+% Further, Louvain algorithm may identify communities that are arbitrarily badly connected. Nodes that are grouped together may be better off split into multiple communities, i.e., splitting the community can improve the quality. This is not the same as resolution limit problem with modularity, that causes small communities to be clustered with large communities. Louvain only guarantees that no communities can be merged (well separated). Badly connected => Leiden could split given communities.
 
-However, applying the original \textit{Leiden} algorithm to massive graphs has raised computational bottlenecks, mainly due to its inherently sequential nature. In contexts where scalability is paramount, the development of an optimized parallel \textit{Leiden} algorithm becomes imperative. This poster addresses precisely this challenge by presenting a parallel implementation of \textit{Leiden} \kk{say Leiden algorithm. not just Leiden}, targeting both quality and efficiency.
+
+%% Leiden algorithm
+% Unlike the Louvain algorithm, the Leiden algorithm has an additional refine phase after the local-moving phase, where nodes within each community are local-moved again after reset. Refine phase is randomized (not greedy), the community a node moves to is proportional to the delta-modularity of moving to that community. When nodes are greedily moved, some optimal partitions cannot be found. It uses local-move with pruning (however, we apply this optimizations to both algorithms).
+
+
+%% Leiden algorithm: Guarantees
+% 1. All communities are $\gamma$-separated.
+% 2. All communities are $\gamma$-connected.
+% If partition didn’t change:
+% 3. All nodes are optimally assigned.
+% 4. All communities are subpartition $\gamma$-dense.
+% 5. All communities are uniformly $\gamma$-dense.
+% 6. All communities are subset optimal.
+
+
+%% Idea behind Leiden algorithm
+% The idea behind the new leiden algorithm is that louvain can find arbitrarily badly connected communities and even disconnected communities. Louvain algorithm has two phases, a locl-moving phase, and an aggregation phase (for each pass). Leiden algorithm adds another refinement phase between the two, where it allows vertices to find sub-communities within the communities just obtained from local-moving phase.
+
+
+%% Came across Leiden algorithm
+% I came across this paper on Leiden method which shows that some communities produced by Louvain method are badly connected, and some even disconnected (and why this is not good). Louvain method relies on modularity score, which has resolution issues (cant handle too small communities, solution CPM score). They add a refinement step and a better (random) local move approach. The restructuring phase is also with refinement. They also proved is supplementary section why its better.
+% https://www.nature.com/articles/s41598-019-41695-z
+
+% In both:
+% Phase 1: Iterate until the score no longer improves (but Leiden can still proceed, maybe because its random)
+% Phase 2: Form its smaller super-nodes graph
+% Repeat until score no longer improves
+
+
+%% More about Leiden algorithm
+% - Separating disconnected communities
+% Louvain algorithm may place diconnected groups of vertices within the same community. We could try disconnecting them either at the end or at the end of each phase.
+% - Dynamic Leiden algorithm
+% This involves applying a refinement phase after the local-moving phase of the Louvain algorithm. It also should be able to handle community split without a call to Static Louvain/Leiden.
+% In the end we can measure the quality of communities obtained through our disconnected Louvain and dynamic Leiden in terms of quality, stability, and performance.
+
 
 
 
 
 \subsection{Our Contributions}
 
-This report introduces GVE-Leiden, an optimized parallel implementation of Leiden\footnote{https://github.com/puzzlef/leiden-communities-openmp} for shared memory multicores. On a machine with two 16-core Intel Xeon Gold 6226R processors, GVE-Leiden outperforms Vite, Grappolo, and NetworKit Louvain by $50\times$, $22\times$, and $20\times$ respectively, achieving a processing rate of $560 M$ edges/s on a $3.8 B$ edge graph. With doubling of threads, GVE-Leiden exhibits an average performance scaling of $1.6\times$.
+This report introduces GVE-Leiden, an optimized parallel implementation of the Leiden algorithm\footnote{https://github.com/puzzlef/leiden-communities-openmp} for community detection on shared memory multicores. On a machine with two 16-core Intel Xeon Gold 6226R processors, GVE-Leiden outperforms the original Leiden implementation, igraph Leiden, and NetworKit Leiden by $373\times$, $86\times$, and $7.2\times$ respectively, achieving a processing rate of $352 M$ edges/s on a $3.8 B$ edge graph. With doubling of threads, GVE-Leiden exhibits an average performance scaling of $1.6\times$. This makes GVE-Leiden an attractive choice for community detection on massive graphs.
 
-This poster presents an optimized parallel version of the \textit{Leiden} algorithm for community detection. Our implementation can identify communities in a large undirected web graph with $1.9$ billion edges in just $10$ seconds using a single 64-core CPU. When compared to our optimized parallel \textit{Louvain} implementation, \textit{Leiden} achieves a $20$-fold reduction in disconnected communities, slightly higher net modularity, and only a $26\%$ drop in performance. This makes \textit{Leiden} an attractive choice for community detection on massive graphs.
+Compared to our optimized parallel \textit{Louvain} implementation, \textit{Leiden} achieves a $20$-fold reduction in disconnected communities, slightly higher net modularity, and only a $26\%$ drop in performance. 
 
 
 
