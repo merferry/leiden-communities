@@ -4,51 +4,6 @@ Despite its popularity, the Louvain method has been observed to produce internal
 
 However, applying the original Leiden algorithm to massive graphs has raised computational bottlenecks, mainly due to its inherently sequential nature --- similar to the Louvain method \cite{com-halappanavar17}. In contexts where scalability is paramount, the development of an optimized parallel Leiden algorithm becomes imperative --- especially in the multicore/shared memory setting, due to its energy efficiency and the prevalence of hardware with large memory sizes.\ignore{This technical report addresses precisely this challenge by presenting a parallel implementation of the Leiden algorithm, targeting both quality and efficiency.} Further, existing studies on parallel Leiden algorithm \cite{verweijfaster, nguyenleiden} propose a number of parallelization techniques, but do not address optimization for the aggregation phase of the Leiden algorithm, which emerges as a bottleneck after the local-moving phase of the algorithm has been optimized. In addition, a number of optimization techniques that apply to the Louvain method also apply to the Leiden algorithm.\ignore{However, these are scattered over a number of papers, making it difficult for a reader to get a grip over them.}
 
-%% Introduction for Leiden algorithm
-%% Problems with Louvain: Internally disconnected communities
-% Louvain algorithm may identify communities that are internally disconnected. A certain node that acts as bridge may move to another community. Remaining vertices stay well connected. This occurs frequently in practice. Iterating the algorithm aggravates the problem. Although its does not decrease quality function.
-
-
-%% Problems with Louvain: Arbitrarily badly connected communities
-% Further, Louvain algorithm may identify communities that are arbitrarily badly connected. Nodes that are grouped together may be better off split into multiple communities, i.e., splitting the community can improve the quality. This is not the same as resolution limit problem with modularity, that causes small communities to be clustered with large communities. Louvain only guarantees that no communities can be merged (well separated). Badly connected => Leiden could split given communities.
-
-
-%% Leiden algorithm
-% Unlike the Louvain algorithm, the Leiden algorithm has an additional refine phase after the local-moving phase, where nodes within each community are local-moved again after reset. Refine phase is randomized (not greedy), the community a node moves to is proportional to the delta-modularity of moving to that community. When nodes are greedily moved, some optimal partitions cannot be found. It uses local-move with pruning (however, we apply this optimizations to both algorithms).
-
-
-%% Leiden algorithm: Guarantees
-% 1. All communities are $\gamma$-separated.
-% 2. All communities are $\gamma$-connected.
-% If partition didn’t change:
-% 3. All nodes are optimally assigned.
-% 4. All communities are subpartition $\gamma$-dense.
-% 5. All communities are uniformly $\gamma$-dense.
-% 6. All communities are subset optimal.
-
-
-%% Idea behind Leiden algorithm
-% The idea behind the new leiden algorithm is that louvain can find arbitrarily badly connected communities and even disconnected communities. Louvain algorithm has two phases, a locl-moving phase, and an aggregation phase (for each pass). Leiden algorithm adds another refinement phase between the two, where it allows vertices to find sub-communities within the communities just obtained from local-moving phase.
-
-
-%% Came across Leiden algorithm
-% I came across this paper on Leiden method which shows that some communities produced by Louvain method are badly connected, and some even disconnected (and why this is not good). Louvain method relies on modularity score, which has resolution issues (cant handle too small communities, solution CPM score). They add a refinement step and a better (random) local move approach. The restructuring phase is also with refinement. They also proved is supplementary section why its better.
-% https://www.nature.com/articles/s41598-019-41695-z
-
-% In both:
-% Phase 1: Iterate until the score no longer improves (but Leiden can still proceed, maybe because its random)
-% Phase 2: Form its smaller super-nodes graph
-% Repeat until score no longer improves
-
-
-%% More about Leiden algorithm
-% - Separating disconnected communities
-% Louvain algorithm may place diconnected groups of vertices within the same community. We could try disconnecting them either at the end or at the end of each phase.
-% - Dynamic Leiden algorithm
-% This involves applying a refinement phase after the local-moving phase of the Louvain algorithm. It also should be able to handle community split without a call to Static Louvain/Leiden.
-% In the end we can measure the quality of communities obtained through our disconnected Louvain and dynamic Leiden in terms of quality, stability, and performance.
-
-
 
 
 
