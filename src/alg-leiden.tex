@@ -32,6 +32,7 @@
     \State $C' \gets$ Renumber communities in $C'$ \label{alg:leiden--renumber}
     \State $C \gets$ Lookup dendrogram using $C$ to $C'$ \label{alg:leiden--lookup}
     \State $G' \gets leidenAggregate(G', C')$ \label{alg:leiden--aggregate}
+    \State $C' \gets$ Map $C'$ to $C'_B$ \Comment{Use move-based membership} \label{alg:leiden--useparent}
     \State $\tau \gets \tau / \text{\small{TOLERANCE\_DROP}}$ \Comment{Threshold scaling} \label{alg:leiden--threshold-scaling}
   \EndFor \label{alg:leiden--passes-end}
   \State $C \gets$ Lookup dendrogram using $C$ to $C'$ \label{alg:leiden--lookup-last}
