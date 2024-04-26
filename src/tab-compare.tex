@@ -1,0 +1,19 @@
+\begin{table}[hbtp]
+  \centering
+  \caption{Speedup of our multicore implementation of Leiden algorithm compared to other state-of-the-art implementations. Direct comparisons entail running the given implementation on our server, while indirect comparisons (marked with a $*$, explained in Section \ref{sec:comparison-indirect}) involve comparing results relative to a common reference\ignore{(original Leiden)}.\ignore{Notably, the Leiden implementations vary in their classification, with some being multi-core and others multi-node.}}
+  \label{tab:compare}
+  \begin{tabular}{|c|c||c|}
+    \toprule
+    \textbf{Leiden implementation} &
+    \textbf{Published} &
+    \textbf{Our Speedup} \\
+    \midrule
+    Original Leiden \cite{com-traag19} & 2019 & $22\times$ \\ \hline
+    igraph Leiden \cite{csardi2006igraph} & 2006 & $50\times$ \\ \hline
+    NetworKit Leiden \cite{staudt2016networkit} & 2016 & $20\times$ \\ \hline
+    KatanaGraph Leiden \cite{katanagraph} & 2023 & $166\times^*$ \\ \hline
+    ParLeiden-S \cite{huparleiden} & 2023 & $22\times^*$ \\ \hline
+    ParLeiden-D (8 nodes) \cite{huparleiden} & 2023 & $18\times^*$ \\ \hline
+  \bottomrule
+  \end{tabular}
+\end{table}
