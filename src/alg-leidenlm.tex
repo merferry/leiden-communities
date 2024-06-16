@@ -6,7 +6,6 @@
 \Require{$C'$: Community membership of each vertex}
 \Require{$K'$: Total edge weight of each vertex}
 \Require{$\Sigma'$: Total edge weight of each community}
-\Ensure{$G'_{C'}$: Community vertices (CSR)}
 \Ensure{$H_t$: Collision-free per-thread hashtable}
 \Ensure{$l_i$: Number of iterations performed}
 \Ensure{$\tau$: Per iteration tolerance}
@@ -25,7 +24,7 @@
       \State $\delta Q^* \gets$ Delta-modularity of moving $i$ to $c^*$ \label{alg:leidenlm--best-community-end}
       \If{$c^* = C'[i]$} \textbf{continue} \label{alg:leidenlm--best-community-same}
       \EndIf
-      \State $\Sigma'[C'[i]] -= K'[i]$ \textbf{;} $\Sigma'[c^*] += K'[i]$ \textbf{atomic} \label{alg:leidenlm--perform-move-begin}
+      \State $\Sigma'[C'[i]] -= K'[i]$ \textbf{;} $\Sigma'[c^*] += K'[i]$ \textbf{atomically} \label{alg:leidenlm--perform-move-begin}
       \State $C'[i] \gets c^*$ \textbf{;} $\Delta Q \gets \Delta Q + \delta Q^*$ \label{alg:leidenlm--perform-move-end}
       \State Mark neighbors of $i$ as unprocessed \label{alg:leidenlm--remark}
     \EndFor \label{alg:leidenlm--loop-vertices-end}

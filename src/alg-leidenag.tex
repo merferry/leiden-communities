@@ -16,21 +16,21 @@
   \State $G'_{C'}.offsets \gets countCommunityVertices(G', C')$ \label{alg:leidenag--coff-begin}
   \State $G'_{C'}.offsets \gets exclusiveScan(G'_{C'}.offsets)$ \label{alg:leidenag--coff-end}
   \ForAll{$i \in V'$ \textbf{in parallel}} \label{alg:leidenag--comv-begin}
-    \State Add edge $(C'[i], i)$ to CSR $G'_{C'}$ atomically
+    \State Add edge $(C'[i], i)$ to CSR $G'_{C'}$ \textbf{atomically}
   \EndFor \label{alg:leidenag--comv-end}
   \State $\rhd$ Obtain super-vertex graph
   \State $G''.offsets \gets communityTotalDegree(G', C')$ \label{alg:leidenag--yoff-begin}
   \State $G''.offsets \gets exclusiveScan(G''.offsets)$ \label{alg:leidenag--yoff-end}
   \State $|\Gamma| \gets$ Number of communities in $C'$
   \ForAll{$c \in [0, |\Gamma|)$ \textbf{in parallel}} \label{alg:leidenag--y-begin}
-    \If{degree of $c$ in $G'_{C'} = 0$} \textbf{continue}
-    \EndIf
+    % \If{degree of $c$ in $G'_{C'} = 0$} \textbf{continue}
+    % \EndIf
     \State $H_t \gets \{\}$
     \ForAll{$i \in G'_{C'}.edges(c)$}
-      \State $H_t \gets scanCommunities(H, G', C', i, true)$
+      \State $H_t \gets scanCommunities(H_t, G', C', i, true)$
     \EndFor
     \ForAll{$(d, w) \in H_t$}
-      \State Add edge $(c, d, w)$ to CSR $G''$ atomically
+      \State Add edge $(c, d, w)$ to CSR $G''$ \textbf{atomically}
     \EndFor
   \EndFor \label{alg:leidenag--y-end}
   \Return $G''$ \label{alg:leidenag--return}

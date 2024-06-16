@@ -6,13 +6,11 @@
 \Require{$C'$: Community membership of each vertex}
 \Require{$K'$: Total edge weight of each vertex}
 \Require{$\Sigma'$: Total edge weight of each community}
-\Ensure{$G'_{C'}$: Community vertices (CSR)}
 \Ensure{$H_t$: Collision-free per-thread hashtable}
-\Ensure{$\tau$: Per iteration tolerance}
 
 \Statex
 
-\Function{leidenRefine}{$G', C'_B, C', K', \Sigma', \tau$} \label{alg:leidenre--move-begin}
+\Function{leidenRefine}{$G', C'_B, C', K', \Sigma'$} \label{alg:leidenre--move-begin}
   \ForAll{$i \in V'$ \textbf{in parallel}} \label{alg:leidenre--loop-vertices-begin}
     \State $c \gets C'[i]$
     \If{$\Sigma'[c] \neq K'[i]$} \textbf{continue} \label{alg:leidenre--check-isolated}
@@ -24,8 +22,7 @@
     \If{$c^* = c$} \textbf{continue} \label{alg:leidenre--best-community-same}
     \EndIf
     \If{$atomicCAS(\Sigma'[c], K'[i], 0) = K'[i]$} \label{alg:leidenre--perform-move-begin}
-      \State $\Sigma'[c^*] += K'[i]$ \textbf{atomically}
-      \State $C'[i] \gets c^*$ \label{alg:leidenre--perform-move-end}
+      \State $\Sigma'[c^*] += K'[i]$ \textbf{atomically} \textbf{;} $C'[i] \gets c^*$ \label{alg:leidenre--perform-move-end}
     \EndIf
   \EndFor \label{alg:leidenre--loop-vertices-end}
 \EndFunction \label{alg:leidenre--move-end}
